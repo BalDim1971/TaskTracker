@@ -2,6 +2,7 @@
 Файл с моделью данных Сотрудник
 """
 
+from typing import List, Optional
 from pydantic import BaseModel
 
 
