@@ -10,5 +10,5 @@ class EmployeeSchema(BaseModel):
     email: str
     last_name: str
     first_name: str
-    patronymic: str
-    post: str
+    patronymic: Optional[str] = None
+    post: Optional[str] = None
