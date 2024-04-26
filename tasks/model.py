@@ -8,19 +8,20 @@
 6. status - статус выполнения задачи, пока: 0 - ждет исполнителя, 1 - в работе
 """
 
-from sqlalchemy import (Column, Integer, MetaData, String, Table, Text,
-                        ForeignKey, DateTime)
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.ext.declarative import declarative_base
 
-metadata_task = MetaData()
 
-Task = Table(
-    'task',
-    metadata_task,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('name', String(50), nullable=False, unique=True),
-    Column('content', Text, nullable=False),
-    Column('period_of_execution', DateTime, nullable=False),
-    Column('parent_id', ForeignKey('task.id'), nullable=True),
-    Column('status', Integer, nullable=False, default=0)
+Base = declarative_base()
 
-)
+class Task(Base):
+    __tablename__ = 'task',
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False, unique=True)
+    content = Column(Text, nullable=False)
+    period_of_execution = Column(DateTime(timezone=True),
+                                 server_default=func.now())
+    parent_id = Column(ForeignKey('task.id'), nullable=True)
+    status = Column(Integer, nullable=False, default=0)
+    employee_id = Column(ForeignKey('public.employee.id'))

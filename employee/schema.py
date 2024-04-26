@@ -1,13 +1,16 @@
 """
-Файл с моделью данных Сотрудник
+Файл со схемой Сотрудник
 """
 
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, EmailStr
 
 
 class EmployeeSchema(BaseModel):
-    email: str
+    """
+    Схема Сотрудник.
+    """
+    email: EmailStr
     last_name: str
     first_name: str
     patronymic: Optional[str] = None

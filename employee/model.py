@@ -8,17 +8,17 @@
 6. post - должность, необязательное (?).
 """
 
-from sqlalchemy import (Column, Integer, MetaData, String, Table)
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
 
-metadata_employee = MetaData()
+Base = declarative_base()
 
-Employee = Table(
-    'employee',
-    metadata_employee,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('email', String(50), nullable=False, unique=True),
-    Column('last_name', String(50), nullable=False),
-    Column('first_name', String(50), nullable=False),
-    Column('patronymic', String(50)),
-    Column('post', String(50))
-)
+
+class Employee(Base):
+    __tablename__ = 'employee'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(40), nullable=False, unique=True)
+    last_name = Column(String(50), nullable=False)
+    first_name = Column(String(50), nullable=False)
+    patronymic = Column(String(50))
+    post = Column(String(50))

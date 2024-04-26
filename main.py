@@ -1,21 +1,21 @@
 import uvicorn
 from fastapi import FastAPI
-# from sqlalchemy import select
 
 from src.config import DB_HOST
 from src.services import create_db
 from src.db import database, engine
 
-from employee.model import metadata_employee
+from employee.model import Base, Employee
 from employee.services import employees
 
-from tasks.model import metadata_task
+from tasks.model import Task
 from tasks.services import tasks
+
+import sqlalchemy as sa
 
 create_db()
 
-metadata_employee.create_all(engine)
-metadata_task.create_all(engine)
+Base.metadata.create_all(engine)
 
 app = FastAPI()
 
@@ -33,23 +33,10 @@ async def shutdown():
 
 
 # @app.get("/")
-# async def read_root():
-#     # изменим роут таким образом, чтобы он брал данные из БД
-#     query = (
-#         select(
-#             [
-#                 posts_table.c.id,
-#                 posts_table.c.created_at,
-#                 posts_table.c.title,
-#                 posts_table.c.content,
-#                 posts_table.c.user_id,
-#                 users_table.c.name.label("user_name"),
-#             ]
-#         )
-#         .select_from(posts_table.join(users_table))
-#         .order_by(desc(posts_table.c.created_at))
-#     )
-#     return await database.fetch_all(query)
+# async def read_tasks_employees(skip: int = 0, limit: int = 10):
+#     questions = sa.query(Task).filter(
+#         Task.topic_id == t1_id,
+#     ).order_by(Question.id.desc()).limit(10).all()
 
 
 app.include_router(employees)

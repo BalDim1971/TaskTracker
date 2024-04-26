@@ -2,6 +2,7 @@ from src.db import database
 from employee.model import Employee
 from employee.schema import EmployeeSchema
 
+
 async def add_employee(payload: EmployeeSchema):
     query = Employee.insert().values(**payload.dict())
     return await database.execute(query=query)

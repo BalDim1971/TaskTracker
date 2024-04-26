@@ -10,6 +10,7 @@
 
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
+from src.db import SessionLocal
 
 from employee.schema import EmployeeSchema
 from employee import db_manager
@@ -20,6 +21,15 @@ employees = APIRouter()
 @employees.get('/employee/', response_model=List[EmployeeSchema])
 async def index():
     return await db_manager.get_all_employees()
+
+
+@employees.get('/employee/{id}')
+async def get_employee(id: int):
+    employee = await db_manager.get_employee(id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+    
+    return employee
 
 
 @employees.post('/employee/', status_code=201)
