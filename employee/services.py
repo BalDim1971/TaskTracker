@@ -8,58 +8,68 @@
 5. Чтение данных об одном сотруднике
 """
 
-from typing import List
-from fastapi import APIRouter, HTTPException, Depends
-from src.db import SessionLocal
+from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.openapi.models import Response
+from sqlalchemy.orm import Session
 
+from src.db import get_db
+from employee.model import Employee
 from employee.schema import EmployeeSchema
-from employee import db_manager
 
-employees = APIRouter()
-
-
-@employees.get('/employee/', response_model=List[EmployeeSchema])
-async def index():
-    return await db_manager.get_all_employees()
+api_employee = APIRouter()
 
 
-@employees.get('/employee/{id}')
-async def get_employee(id: int):
-    employee = await db_manager.get_employee(id)
-    if not employee:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден")
+@api_employee.get('/')
+def get_employees(db: Session = Depends(get_db)):
+    employees = db.query(Employee).all()
+    return {'status': 'success',
+            'results': len(employees),
+            'employees': employees}
+
+
+@api_employee.post('/', status_code=status.HTTP_201_CREATED)
+def create_employees(payload: EmployeeSchema = Depends(),
+                     db: Session = Depends(get_db)):
+    new_employee = Employee(**payload.dict())
+    db.add(new_employee)
+    db.commit()
+    db.refresh(new_employee)
+    return {'status': 'success', 'employee': new_employee}
+
+
+@api_employee.patch('/{employeeId}')
+def update_employee(employeeId: str, payload: EmployeeSchema = Depends(),
+                    db: Session = Depends(get_db)):
+    employee_query = db.query(Employee).filter(Employee.id == employeeId)
+    db_employee = employee_query.first()
     
-    return employee
-
-
-@employees.post('/employee/', status_code=201)
-async def add_employee(payload: EmployeeSchema = Depends()):
-    employee_id = await db_manager.add_employee(payload)
-    response = {
-        'id': employee_id,
-        **payload.dict()
-    }
-    
-    return response
-
-
-@employees.put('/employee/{id}')
-async def update_employee(id: int, payload: EmployeeSchema = Depends()):
-    employee = await db_manager.get_employee(id)
-    if not employee:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден")
-    
+    if not db_employee:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Сотрудник с id: {employeeId} не найден')
     update_data = payload.dict(exclude_unset=True)
-    employee_in_db = EmployeeSchema(**employee)
-    
-    updated_employee = employee_in_db.copy(update=update_data)
-    
-    return await db_manager.update_employee(id, updated_employee)
+    employee_query.filter(Employee.id == employeeId).update(
+        update_data, synchronize_session=False)
+    db.commit()
+    db.refresh(db_employee)
+    return {"status": "success", "employee": db_employee}
 
 
-@employees.delete('/employee/{id}')
-async def delete_employee(id: int):
-    employee = await db_manager.get_employee(id)
+@api_employee.get('/{employeeId}')
+def get_employee(employeeId: str, db: Session = Depends(get_db)):
+    employee = db.query(Employee).filter(Employee.id == employeeId).first()
     if not employee:
-        raise HTTPException(status_code=404, detail="Сотрудник не найден")
-    return await db_manager.delete_employee(id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Сотрудник с id: {employeeId} не найден")
+    return {"status": "success", "employee": employee}
+
+
+@api_employee.delete('/{employeeId}')
+def delete_employee(employeeId: str, db: Session = Depends(get_db)):
+    employee_query = db.query(Employee).filter(Employee.id == employeeId)
+    employee = employee_query.first()
+    if not employee:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Сотрудник с id: {employeeId} не найден')
+    employee_query.delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

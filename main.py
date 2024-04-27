@@ -3,44 +3,27 @@ from fastapi import FastAPI
 
 from src.config import DB_HOST
 from src.services import create_db
-from src.db import database, engine
+from src.db import engine
 
-from employee.model import Base, Employee
-from employee.services import employees
+from employee.model import Base
+from employee.services import api_employee
 
-from tasks.model import Task
-from tasks.services import tasks
+from tasks.services import api_task
 
-import sqlalchemy as sa
 
 create_db()
 
-Base.metadata.create_all(engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+app.include_router(api_employee, tags=['Employees'], prefix='/employees')
+app.include_router(api_task, tags=['Tasks'], prefix='/tasks')
 
-@app.on_event("startup")
-async def startup():
-    # когда приложение запускается устанавливаем соединение с БД
-    await database.connect()
+@app.get("/api/healthchecker")
+def root():
+    return {"message": "Welcome to FastAPI with SQLAlchemy"}
 
-
-@app.on_event("shutdown")
-async def shutdown():
-    # когда приложение останавливается разрываем соединение с БД
-    await database.disconnect()
-
-
-# @app.get("/")
-# async def read_tasks_employees(skip: int = 0, limit: int = 10):
-#     questions = sa.query(Task).filter(
-#         Task.topic_id == t1_id,
-#     ).order_by(Question.id.desc()).limit(10).all()
-
-
-app.include_router(employees)
-app.include_router(tasks)
 
 # To run locally
 if __name__ == '__main__':

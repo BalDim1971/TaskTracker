@@ -7,16 +7,18 @@
 5. patronymic - отчество, необязательное.
 6. post - должность, необязательное (?).
 """
+from fastapi_utils.guid_type import GUID, GUID_SERVER_DEFAULT_POSTGRESQL
+from sqlalchemy import Column, String
+from sqlalchemy.orm import DeclarativeBase
 
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
 
-Base = declarative_base()
+class Base(DeclarativeBase): pass
 
 
 class Employee(Base):
     __tablename__ = 'employee'
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(GUID, primary_key=True,
+                server_default=GUID_SERVER_DEFAULT_POSTGRESQL)
     email = Column(String(40), nullable=False, unique=True)
     last_name = Column(String(50), nullable=False)
     first_name = Column(String(50), nullable=False)

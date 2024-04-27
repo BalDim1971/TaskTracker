@@ -8,48 +8,67 @@
 5. Чтение данных об одном задании
 """
 
-from typing import List
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi.openapi.models import Response
+from sqlalchemy.orm import Session
 
+from src.db import get_db
+from tasks.model import Task
 from tasks.schema import TaskSchema
-from tasks import db_manager
 
-tasks = APIRouter()
-
-
-@tasks.get('/task/', response_model=List[TaskSchema])
-async def index():
-    return await db_manager.get_all_tasks()
+api_task = APIRouter()
 
 
-@tasks.post('/task/', status_code=201)
-async def add_task(payload: TaskSchema = Depends()):
-    task_id = await db_manager.add_task(payload)
-    response = {
-        'id': task_id,
-        **payload.dict()
-    }
+@api_task.get('/')
+def get_tasks(db: Session = Depends(get_db)):
+    tasks = db.query(Task).all()
+    return {'status': 'success', 'results': len(tasks), 'tasks': tasks}
+
+
+@api_task.post('/', status_code=status.HTTP_201_CREATED)
+def create_tasks(payload: TaskSchema = Depends(),
+                     db: Session = Depends(get_db)):
+    new_task = Task(**payload.dict())
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return {'status': 'success',
+            'task': new_task}
+
+
+@api_task.patch('/{taskId}')
+def update_task(taskId: str, payload: TaskSchema = Depends(),
+                    db: Session = Depends(get_db)):
+    task_query = db.query(Task).filter(Task.id == taskId)
+    db_task = task_query.first()
     
-    return response
-
-
-@tasks.put('/task/{id}')
-async def update_task(id: int, payload: TaskSchema = Depends()):
-    task = await db_manager.get_task(id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Задача не найдена")
-    
+    if not db_task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Задание с id: {taskId} не найдено')
     update_data = payload.dict(exclude_unset=True)
-    task_in_db = TaskSchema(**task)
-    
-    updated_task = task_in_db.copy(update=update_data)
-    
-    return await db_manager.update_task(id, updated_task)
+    task_query.filter(Task.id == taskId).update(
+        update_data, synchronize_session=False)
+    db.commit()
+    db.refresh(db_task)
+    return {"status": "success", "task": db_task}
 
 
-@tasks.delete('/task/{id}')
-async def delete_task(id: int):
-    task = await db_manager.get_task(id)
+@api_task.get('/{taskId}')
+def get_task(taskId: str, db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == taskId).first()
     if not task:
-        raise HTTPException(status_code=404, detail="Задача не найдена")
-    return await db_manager.delete_task(id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Задание с id: {taskId} не найдено')
+    return {"status": "success", "task": task}
+
+
+@api_task.delete('/{taskId}')
+def delete_task(taskId: str, db: Session = Depends(get_db)):
+    task_query = db.query(Task).filter(Task.id == taskId)
+    task = task_query.first()
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Задание с id: {taskId} не найдено')
+    task_query.delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
