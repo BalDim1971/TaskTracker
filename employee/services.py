@@ -14,14 +14,15 @@ from sqlalchemy.orm import Session
 
 from src.db import get_db
 from employee.model import Employee
-from employee.schema import EmployeeSchema
+from employee.schema import EmployeeSchema, EmployeeList
 
 api_employee = APIRouter()
 
 
-@api_employee.get('/')
-def get_employees(db: Session = Depends(get_db)):
+@api_employee.get('/', response_model=EmployeeList)
+def get_employees(db: Session = Depends(get_db)) -> dict:
     employees = db.query(Employee).all()
+    print(employees)
     return {'status': 'success',
             'results': len(employees),
             'employees': employees}
@@ -29,7 +30,7 @@ def get_employees(db: Session = Depends(get_db)):
 
 @api_employee.post('/', status_code=status.HTTP_201_CREATED)
 def create_employees(payload: EmployeeSchema = Depends(),
-                     db: Session = Depends(get_db)):
+                     db: Session = Depends(get_db)) -> dict:
     new_employee = Employee(**payload.dict())
     db.add(new_employee)
     db.commit()
@@ -39,10 +40,10 @@ def create_employees(payload: EmployeeSchema = Depends(),
 
 @api_employee.patch('/{employeeId}')
 def update_employee(employeeId: str, payload: EmployeeSchema = Depends(),
-                    db: Session = Depends(get_db)):
+                    db: Session = Depends(get_db)) -> dict:
     employee_query = db.query(Employee).filter(Employee.id == employeeId)
     db_employee = employee_query.first()
-    
+
     if not db_employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'Сотрудник с id: {employeeId} не найден')
@@ -55,7 +56,7 @@ def update_employee(employeeId: str, payload: EmployeeSchema = Depends(),
 
 
 @api_employee.get('/{employeeId}')
-def get_employee(employeeId: str, db: Session = Depends(get_db)):
+def get_employee(employeeId: str, db: Session = Depends(get_db)) -> dict:
     employee = db.query(Employee).filter(Employee.id == employeeId).first()
     if not employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
