@@ -10,13 +10,13 @@
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.openapi.models import Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from src.db import get_db
 from employee.model import Employee
-from employee.schema import EmployeeSchema, EmployeeList
+from employee.schema import (EmployeeList, EmployeeCreateUpdateSchema)
 
-api_employee = APIRouter()
+api_employee = APIRouter(tags=['Employees'], prefix='/employees')
 
 
 @api_employee.get('/', response_model=EmployeeList)
@@ -28,9 +28,18 @@ def get_employees(db: Session = Depends(get_db)) -> dict:
             'employees': employees}
 
 
-@api_employee.post('/', status_code=status.HTTP_201_CREATED)
-def create_employees(payload: EmployeeSchema = Depends(),
-                     db: Session = Depends(get_db)) -> dict:
+@api_employee.get('/get/{employeeId}')
+def get_employee(employeeId: str, db: Session = Depends(get_db)):
+    employee = db.query(Employee).filter(Employee.id == employeeId).first()
+    if not employee:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Сотрудник с id: {employeeId} не найден")
+    return {"status": "success", "employee": employee}
+
+
+@api_employee.post('/create', status_code=status.HTTP_201_CREATED)
+def create_employees(payload: EmployeeCreateUpdateSchema = Depends(),
+                     db: Session = Depends(get_db)):
     new_employee = Employee(**payload.dict())
     db.add(new_employee)
     db.commit()
@@ -38,9 +47,10 @@ def create_employees(payload: EmployeeSchema = Depends(),
     return {'status': 'success', 'employee': new_employee}
 
 
-@api_employee.patch('/{employeeId}')
-def update_employee(employeeId: str, payload: EmployeeSchema = Depends(),
-                    db: Session = Depends(get_db)) -> dict:
+@api_employee.patch('/update/{employeeId}')
+def update_employee(employeeId: str,
+                    payload: EmployeeCreateUpdateSchema = Depends(),
+                    db: Session = Depends(get_db)):
     employee_query = db.query(Employee).filter(Employee.id == employeeId)
     db_employee = employee_query.first()
 
@@ -55,16 +65,7 @@ def update_employee(employeeId: str, payload: EmployeeSchema = Depends(),
     return {"status": "success", "employee": db_employee}
 
 
-@api_employee.get('/{employeeId}')
-def get_employee(employeeId: str, db: Session = Depends(get_db)) -> dict:
-    employee = db.query(Employee).filter(Employee.id == employeeId).first()
-    if not employee:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Сотрудник с id: {employeeId} не найден")
-    return {"status": "success", "employee": employee}
-
-
-@api_employee.delete('/{employeeId}')
+@api_employee.delete('/del/{employeeId}')
 def delete_employee(employeeId: str, db: Session = Depends(get_db)):
     employee_query = db.query(Employee).filter(Employee.id == employeeId)
     employee = employee_query.first()
@@ -74,3 +75,26 @@ def delete_employee(employeeId: str, db: Session = Depends(get_db)):
     employee_query.delete(synchronize_session=False)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@api_employee.get('/busy', response_model=EmployeeList)
+def get_employees_busy(db: Session = Depends(get_db)) -> dict:
+    employees = (db.query(Employee).options(joinedload(Employee.tasks)).
+                 filter(Employee.tasks is not None).all())
+    return {'status': 'success',
+            'results': len(employees),
+            'employees': employees}
+
+
+@api_employee.get('/free')
+def get_employees_free(taskId: str, db: Session = Depends(get_db)):
+    task_query = db.query(Employee).filter(Employee.tasks is None)
+    task = task_query.first()
+
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Задание с id: {taskId} не найдено')
+
+    # прочитать всех сотрудников, отсортировать по задачам
+    #
+    return {"status": "success", "task": task}

@@ -7,10 +7,10 @@ from typing import List
 from pydantic import BaseModel
 
 
-class TaskSchema(BaseModel):
+class BaseTaskSchema(BaseModel):
     """
-    Схема Задание.
-    Без uuid
+    Базовая схема Задание.
+    Без UUID
     """
     name: str
     content: str
@@ -31,6 +31,20 @@ class TaskSchema(BaseModel):
                 "status": "0"
             }
         }
+
+
+class TaskSchema(BaseTaskSchema):
+    """
+    Схема Задание.
+    Добавлен UUID
+    """
+    id: UUID
+
+
+class TaskCreateUpdateSchema(BaseTaskSchema):
+    """
+    Схема Задание для создания/обновления.
+    """
 
 
 class TasksList(BaseModel):

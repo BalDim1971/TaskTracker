@@ -26,7 +26,7 @@ class Employee(Base):
     first_name = Column(String, nullable=False)
     patronymic = Column(String)
     post = Column(String)
-    tasks = relationship('Task')
+    tasks = relationship('Task', back_populates='employees', lazy='joined')
 
     def __repr__(self):
         return (f"Employee(email='{self.email}', "
@@ -34,7 +34,7 @@ class Employee(Base):
                 f"first_name='{self.first_name}', "
                 f"patronymic='{self.patronymic}', "
                 f"post='{self.post}')")
-    
+
     def count_task(self) -> int:
         """
         Пробуем вернуть количество взятых для работы задач

@@ -12,6 +12,7 @@
 import uuid
 from sqlalchemy import (Column, Integer, String, Text, ForeignKey, TIMESTAMP)
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from employee.model import Base
 
@@ -28,10 +29,21 @@ class Task(Base):
     status = Column(Integer, nullable=False, default=0)
     employee_id = Column(UUID(as_uuid=True), ForeignKey('employee.id'),
                          nullable=True)
+    employees = relationship(
+        "Employee", back_populates='tasks', lazy='joined'
+    )
+    child_task = relationship(
+        "Task", back_populates='parent_task', lazy='joined'
+    )
+    parent_task = relationship(
+        "Task", remote_side='Task.id', back_populates='child_task',
+        foreign_keys=[parent_id], lazy='joined'
+    )
 
     def __repr__(self):
         return (f"Task(name='{self.name}', "
                 f"content='{self.content}', "
                 f"period_of_execution='{self.period_of_execution}', "
                 f"parent_id='{self.parent_id}',"
+                f"employee_id='{self.employee_id}',"
                 f"status='{self.status}')")
