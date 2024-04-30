@@ -19,6 +19,10 @@ from employee.schema import (EmployeeList, EmployeeCreateUpdateSchema)
 api_employee = APIRouter(tags=['Employees'], prefix='/employees')
 
 
+def count_tasks(s):
+    return len(s.tasks)
+
+
 @api_employee.get('/', response_model=EmployeeList)
 def get_employees(db: Session = Depends(get_db)) -> dict:
     employees = db.query(Employee).all()
@@ -80,11 +84,13 @@ def delete_employee(employeeId: str, db: Session = Depends(get_db)):
 @api_employee.get('/busy', response_model=EmployeeList)
 def get_employees_busy(db: Session = Depends(get_db)) -> dict:
     employees_query = (db.query(Employee).options(joinedload(Employee.tasks)).
-                 filter(Employee.tasks is not None).all())
+                       filter(Employee.tasks is not None).all())
     employees = []
     for employee in employees_query:
         if len(employee.tasks) != 0:
             employees.append(employee)
+    employees = sorted(employees, key=count_tasks, reverse=True)
+
     return {'status': 'success',
             'results': len(employees),
             'employees': employees}
@@ -100,7 +106,7 @@ def get_employees_free(db: Session = Depends(get_db)):
 
     if len(employees) == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f'Сотрудников без заданий не найдено')
+                            detail='Сотрудников без заданий не найдено')
 
     # прочитать всех сотрудников, отсортировать по задачам
     #

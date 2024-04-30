@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from src.db import get_db
 from tasks.model import Task
-from tasks.schema import TaskSchema, TasksList, TaskCreateUpdateSchema
+from tasks.schema import TasksList, TaskCreateUpdateSchema
 
 api_task = APIRouter(tags=['Tasks'], prefix='/tasks')
 

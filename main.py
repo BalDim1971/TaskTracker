@@ -8,7 +8,7 @@ from src.db import engine
 from src.db import get_db
 
 from employee.model import Base, Employee
-from employee.services import api_employee
+from employee.services import api_employee, count_tasks
 
 from tasks.services import api_task
 
@@ -23,9 +23,6 @@ app = FastAPI(
 app.include_router(api_employee)
 app.include_router(api_task)
 
-
-def count_tasks(s):
-    return len(s.tasks)
 
 @app.get('/')
 def root(db: Session = Depends(get_db)):
