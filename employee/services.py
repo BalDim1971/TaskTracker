@@ -79,22 +79,29 @@ def delete_employee(employeeId: str, db: Session = Depends(get_db)):
 
 @api_employee.get('/busy', response_model=EmployeeList)
 def get_employees_busy(db: Session = Depends(get_db)) -> dict:
-    employees = (db.query(Employee).options(joinedload(Employee.tasks)).
+    employees_query = (db.query(Employee).options(joinedload(Employee.tasks)).
                  filter(Employee.tasks is not None).all())
+    employees = []
+    for employee in employees_query:
+        if len(employee.tasks) != 0:
+            employees.append(employee)
     return {'status': 'success',
             'results': len(employees),
             'employees': employees}
 
 
 @api_employee.get('/free')
-def get_employees_free(taskId: str, db: Session = Depends(get_db)):
-    task_query = db.query(Employee).filter(Employee.tasks is None)
-    task = task_query.first()
+def get_employees_free(db: Session = Depends(get_db)):
+    employees_query = db.query(Employee).all()
+    employees = []
+    for employee in employees_query:
+        if len(employee.tasks) == 0:
+            employees.append(employee)
 
-    if not task:
+    if len(employees) == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f'Задание с id: {taskId} не найдено')
+                            detail=f'Сотрудников без заданий не найдено')
 
     # прочитать всех сотрудников, отсортировать по задачам
     #
-    return {"status": "success", "task": task}
+    return {"status": "success", "employees": employees}

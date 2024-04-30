@@ -24,9 +24,13 @@ app.include_router(api_employee)
 app.include_router(api_task)
 
 
+def count_tasks(s):
+    return len(s.tasks)
+
 @app.get('/')
 def root(db: Session = Depends(get_db)):
-    employees = db.query(Employee).options(joinedload(Employee.tasks)).all()
+    employees = (db.query(Employee).options(joinedload(Employee.tasks)).all())
+    employees = sorted(employees, key=count_tasks, reverse=True)
     return {'status': 'success',
             'results': len(employees),
             'employees': employees}

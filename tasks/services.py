@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from src.db import get_db
 from tasks.model import Task
-from tasks.schema import TaskSchema, TasksList
+from tasks.schema import TaskSchema, TasksList, TaskCreateUpdateSchema
 
 api_task = APIRouter(tags=['Tasks'], prefix='/tasks')
 
@@ -37,7 +37,7 @@ def get_task(taskId: str, db: Session = Depends(get_db)):
 
 
 @api_task.post('/create/', status_code=status.HTTP_201_CREATED)
-def create_tasks(payload: TaskSchema = Depends(),
+def create_tasks(payload: TaskCreateUpdateSchema = Depends(),
                  db: Session = Depends(get_db)):
     new_task = Task(**payload.dict())
     if new_task.employee_id is not None and new_task.status == 0:
@@ -50,7 +50,7 @@ def create_tasks(payload: TaskSchema = Depends(),
 
 
 @api_task.patch('/update/{taskId}')
-def update_task(taskId: str, payload: TaskSchema = Depends(),
+def update_task(taskId: str, payload: TaskCreateUpdateSchema = Depends(),
                 db: Session = Depends(get_db)):
     task_query = db.query(Task).filter(Task.id == taskId)
     task = task_query.first()
