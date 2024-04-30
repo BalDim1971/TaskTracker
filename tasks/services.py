@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from src.db import get_db
 from employee.model import Employee
+from employee.services import count_tasks
 from tasks.model import Task
 from tasks.schema import TasksList, TaskCreateUpdateSchema
 
@@ -125,23 +126,18 @@ def set_employee_important_task(taskId: str, db: Session = Depends(get_db)):
     """
     Для важной задачи установить исполнителя (?).
     1. Читаем данные по заданию.
-    2. Ищем сотрудника.
+    2. Ищем сотрудника, который может задачу
+    (наименее загруженный сотрудник или сотрудник выполняющий
+    родительскую задачу если ему назначено максимум на 2 задачи больше,
+    чем у наименее загруженного сотрудника).
     3. Обновляем данные задания.
     :param taskId: ИД задания.
     :param db: Подключаемся к БД.
     :return: Вернуть обновленные данные по задаче (?).
     """
     task_query = db.query(Task).filter(Task.id == taskId)
-    print(task_query)
     task = task_query.first()
-
-    # Получаем сотрудников, ищем свободного
-    employees_query = db.query(Employee).all()
-    employees_free = []
-    for employee in employees_query:
-        if len(employee.tasks) == 0:
-            employees_free.append(employee)
-    # Если свободный есть, берем первый и обновляем задание.
+    employee_parent = task.parent_task
     payload = TaskCreateUpdateSchema(
         name=task.name,
         content=task.content,
@@ -150,9 +146,27 @@ def set_employee_important_task(taskId: str, db: Session = Depends(get_db)):
         status=task.status,
         employee_id=task.employee_id
     )
+
+    # Получаем сотрудников, ищем свободного сотрудника, без задач
+    employees_query = db.query(Employee).all()
+    employees_query = sorted(employees_query, key=count_tasks)
+    employee_min = employees_query[0]
+    employees_free = []
+    for employee in employees_query:
+        if employee.count_task() == 0:
+            employees_free.append(employee)
+    employee_free = employee_min
+    # Если свободный есть, берем первый и обновляем задание.
     if len(employees_free) > 0:
-        payload.employee_id = employees_free[0].id
-        payload.status = 1
+        employee_free = employees_free[0]
+    else:
+        # Если нет свободного, ищем с наименьшим количеством задач и сотрудника,
+        # имеющего в работе родительскую задачу.
+        if employee_parent.count_task() < employee_min.count_task() + 3:
+            employee_free = employee_parent
+
+    payload.employee_id = employee_free.id
+    payload.status = 1
     update_data = payload.dict(exclude_unset=True)
     # Если нет, ищем дальше.
     task_query.filter(Task.id == taskId).update(
