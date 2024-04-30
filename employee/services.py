@@ -98,6 +98,12 @@ def get_employees_busy(db: Session = Depends(get_db)) -> dict:
 
 @api_employee.get('/free')
 def get_employees_free(db: Session = Depends(get_db)):
+    """
+    Пытаемся получить свободных сотрудников.
+    :param db:
+    :return: Пока словарь со свободными сотрудниками.
+    """
+
     employees_query = db.query(Employee).all()
     employees = []
     for employee in employees_query:
@@ -108,6 +114,4 @@ def get_employees_free(db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail='Сотрудников без заданий не найдено')
 
-    # прочитать всех сотрудников, отсортировать по задачам
-    #
     return {"status": "success", "employees": employees}

@@ -13,6 +13,7 @@ from fastapi.openapi.models import Response
 from sqlalchemy.orm import Session
 
 from src.db import get_db
+from employee.model import Employee
 from tasks.model import Task
 from tasks.schema import TasksList, TaskCreateUpdateSchema
 
@@ -54,7 +55,6 @@ def update_task(taskId: str, payload: TaskCreateUpdateSchema = Depends(),
                 db: Session = Depends(get_db)):
     task_query = db.query(Task).filter(Task.id == taskId)
     task = task_query.first()
-    print(task)
 
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -85,6 +85,7 @@ def get_important_tasks(db: Session = Depends(get_db),
     """
     Получить важные задачи
     Читаем по статусу задачи = 0, потом проверяем есть ли родитель
+    и взят ли родитель в работу
     :param db: указатель на БД
     :param limit: количество задач на страницу
     :param page: номер страницы
@@ -95,9 +96,7 @@ def get_important_tasks(db: Session = Depends(get_db),
              limit(limit).offset(skip).all())
     tasks_ret = []
     for task in tasks:
-        if task.parent_task is not None:
-            print(task.parent_task)
-        if task.parent_id is not None:
+        if task.parent_id is not None and task.parent_task.status == 1:
             tasks_ret.append(task)
 
     return {'status': 'success', 'results': len(tasks_ret), 'tasks': tasks_ret}
@@ -119,3 +118,45 @@ def get_free_tasks(db: Session = Depends(get_db),
              limit(limit).offset(skip).all())
 
     return {'status': 'success', 'results': len(tasks), 'tasks': tasks}
+
+
+@api_task.patch('/set_employee/{taskId}')
+def set_employee_important_task(taskId: str, db: Session = Depends(get_db)):
+    """
+    Для важной задачи установить исполнителя (?).
+    1. Читаем данные по заданию.
+    2. Ищем сотрудника.
+    3. Обновляем данные задания.
+    :param taskId: ИД задания.
+    :param db: Подключаемся к БД.
+    :return: Вернуть обновленные данные по задаче (?).
+    """
+    task_query = db.query(Task).filter(Task.id == taskId)
+    print(task_query)
+    task = task_query.first()
+
+    # Получаем сотрудников, ищем свободного
+    employees_query = db.query(Employee).all()
+    employees_free = []
+    for employee in employees_query:
+        if len(employee.tasks) == 0:
+            employees_free.append(employee)
+    # Если свободный есть, берем первый и обновляем задание.
+    payload = TaskCreateUpdateSchema(
+        name=task.name,
+        content=task.content,
+        period_of_execution=task.period_of_execution,
+        parent_id=task.parent_id,
+        status=task.status,
+        employee_id=task.employee_id
+    )
+    if len(employees_free) > 0:
+        payload.employee_id = employees_free[0].id
+        payload.status = 1
+    update_data = payload.dict(exclude_unset=True)
+    # Если нет, ищем дальше.
+    task_query.filter(Task.id == taskId).update(
+        update_data, synchronize_session=False)
+    db.commit()
+    db.refresh(task)
+    return {"status": "success", "task": task}
