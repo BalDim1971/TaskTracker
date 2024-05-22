@@ -68,11 +68,11 @@ uvicorn main:app --reload
 
 При запуске отображается список сотрудников с принятыми задачами
 
-localhost:8000/employees/ - список сотрудников.
-localhost:8000/employees/busy - список занятых сотрудников и задания.
-localhost:8000/employees/free - свободные сотрудники для задания?
-localhost:8000/tasks/ - список заданий и работа с заданиями.
-localhost:8000/tasks/important/ - список важных заданий.
+localhost:8000/employees/ - список сотрудников. 
+localhost:8000/employees/busy - список занятых сотрудников и задания. 
+localhost:8000/employees/free - свободные сотрудники для задания? 
+localhost:8000/tasks/ - список заданий и работа с заданиями. 
+localhost:8000/tasks/important/ - список важных заданий. 
 
 5. Работать с базой данных или просматривать документацию API можно:
 localhost:8000/docs или
